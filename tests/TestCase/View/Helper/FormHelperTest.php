@@ -7244,14 +7244,14 @@ class FormHelperTest extends TestCase
         $result = $this->Form->file('Model.upload');
         $this->assertHtml($expected, $result);
 
-        $this->Form->request->data['Model']['upload'] = [
+        $this->Form->request = $this->Form->request->withData('Model.upload', [
             'name' => '', 'type' => '', 'tmp_name' => '',
             'error' => 4, 'size' => 0
-        ];
+        ]);
         $result = $this->Form->file('Model.upload');
         $this->assertHtml($expected, $result);
 
-        $this->Form->request->data['Model']['upload'] = 'no data should be set in value';
+        $this->Form->request = $this->Form->request->withData('Model.upload', 'no data should be set in value');
         $result = $this->Form->file('Model.upload');
         $this->assertHtml($expected, $result);
     }
@@ -7318,7 +7318,7 @@ class FormHelperTest extends TestCase
      */
     public function testButtonUnlockedByDefault()
     {
-        $this->Form->request->params['_csrfToken'] = 'secured';
+        $this->Form->request = $this->Form->request->withParam('_csrfToken', 'secured');
         $this->Form->button('Save', ['name' => 'save']);
         $this->Form->button('Clear');
 
@@ -7423,8 +7423,9 @@ class FormHelperTest extends TestCase
      */
     public function testSecurePostButton()
     {
-        $this->Form->request->params['_csrfToken'] = 'testkey';
-        $this->Form->request->params['_Token'] = ['unlockedFields' => []];
+        $this->Form->request = $this->Form->request
+            ->withParam('_csrfToken', 'testkey')
+            ->withParam('_Token.unlockedFields', []);
 
         $result = $this->Form->postButton('Delete', '/posts/delete/1');
         $tokenDebug = urlencode(json_encode([
@@ -7616,7 +7617,7 @@ class FormHelperTest extends TestCase
     {
         $hash = hash_hmac('sha1', '/posts/delete/1' . serialize(['id' => '1']) . session_id(), Security::getSalt());
         $hash .= '%3Aid';
-        $this->Form->request->params['_Token']['key'] = 'test';
+        $this->Form->request = $this->Form->request->withParam('_Token.key', 'test');
 
         $result = $this->Form->postLink(
             'Delete',
@@ -7669,7 +7670,7 @@ class FormHelperTest extends TestCase
     {
         $hash = hash_hmac('sha1', '/posts/delete/1' . serialize([]) . session_id(), Security::getSalt());
         $hash .= '%3A';
-        $this->Form->request->params['_Token']['key'] = 'test';
+        $this->Form->request = $this->Form->request->withParam('_Token.key', 'test');
 
         $this->Form->create('Post', ['url' => ['action' => 'add']]);
         $this->Form->control('title');
@@ -7693,7 +7694,8 @@ class FormHelperTest extends TestCase
         Configure::write('debug', false);
         $hash = hash_hmac('sha1', '/posts/delete/1' . serialize(['id' => '1']) . session_id(), Security::getSalt());
         $hash .= '%3Aid';
-        $this->Form->request->params['_Token']['key'] = 'test';
+        $this->Form->request = $this->Form->request
+            ->withParam('_Token.key', 'test');
 
         $result = $this->Form->postLink(
             'Delete',
@@ -7733,7 +7735,7 @@ class FormHelperTest extends TestCase
                 'two' => [
                     3, 4, 5
                 ]
-                ]
+            ]
         ];
         $result = $this->Form->postLink('Send', '/', ['data' => $data]);
         $this->assertContains('<input type="hidden" name="one[two][0]" value="3"', $result);
@@ -7750,8 +7752,9 @@ class FormHelperTest extends TestCase
      */
     public function testPostLinkAfterGetForm()
     {
-        $this->Form->request->params['_csrfToken'] = 'testkey';
-        $this->Form->request->params['_Token'] = 'val';
+        $this->Form->request = $this->Form->request
+            ->withParam('_csrfToken', 'testkey')
+            ->withParam('_Token', 'val');
 
         $this->Form->create($this->article, ['type' => 'get']);
         $this->Form->end();
@@ -7965,7 +7968,7 @@ class FormHelperTest extends TestCase
      */
     public function testSubmitUnlockedByDefault()
     {
-        $this->Form->request->params['_Token'] = 'secured';
+        $this->Form->request = $this->Form->request->withParam('_Token', 'secured');
         $this->Form->submit('Go go');
         $this->Form->submit('Save', ['name' => 'save']);
 
@@ -8048,7 +8051,8 @@ class FormHelperTest extends TestCase
         ];
         $this->assertHtml($expected, $result);
 
-        $this->Form->request->data = ['non_existing_nor_validated' => 'CakePHP magic'];
+        $this->Form->request = $this->Form->request->withData('non_existing_nor_validated', 'CakePHP magic');
+        $this->Form->create($this->article);
         $result = $this->Form->control('non_existing_nor_validated');
         $expected = [
             'label' => ['for' => 'non-existing-nor-validated'],
@@ -8634,21 +8638,18 @@ class FormHelperTest extends TestCase
      */
     public function testFormValueSourcesSettersGetters()
     {
+        $this->Form->request = $this->Form->request
+            ->withData('id', '1')
+            ->withQueryParams(['id' => '2']);
+
         $expected = ['context'];
         $result = $this->Form->getValueSources();
-        $this->assertEquals($expected, $result);
-
-        $expected = null;
-        $result = $this->Form->getSourceValue('id');
         $this->assertEquals($expected, $result);
 
         $expected = ['query', 'data', 'context'];
         $this->Form->setValueSources(['query', 'data', 'invalid', 'context', 'foo']);
         $result = $this->Form->getValueSources();
         $this->assertEquals($expected, $result);
-
-        $this->Form->request->data['id'] = '1';
-        $this->Form->request->query['id'] = '2';
 
         $this->Form->setValueSources(['context']);
         $expected = '1';
@@ -8695,7 +8696,7 @@ class FormHelperTest extends TestCase
         ];
         $this->assertHtml($expected, $result);
 
-        $this->Form->request->query['id'] = '5';
+        $this->Form->request = $this->Form->request->withQueryParams(['id' => 5]);
         $this->Form->setValueSources(['query']);
         $result = $this->Form->control('id');
         $expected = [
@@ -8703,8 +8704,9 @@ class FormHelperTest extends TestCase
         ];
         $this->assertHtml($expected, $result);
 
-        $this->Form->request->query['id'] = '5a';
-        $this->Form->request->data['id'] = '5b';
+        $this->Form->request = $this->Form->request
+            ->withQueryParams(['id' => '5a'])
+            ->withData('id', '5b');
 
         $this->Form->setValueSources(['context']);
         $this->Form->create($article);
@@ -8788,8 +8790,8 @@ class FormHelperTest extends TestCase
         $articles = TableRegistry::get('Articles');
         $article = new Article();
         $articles->patchEntity($article, ['id' => '3']);
-        $this->Form->request->data['id'] = '4';
-        $this->Form->request->query['id'] = '5';
+
+        $this->Form->request = $this->Form->request->withData('id', 4)->withQueryParams(['id' => 5]);
 
         $this->Form->create($article, ['valueSources' => 'query']);
         $result = $this->Form->control('id');
@@ -8844,8 +8846,7 @@ class FormHelperTest extends TestCase
         $article = new Article();
         $articles->patchEntity($article, ['id' => '3']);
 
-        $this->Form->request->data['id'] = '10';
-        $this->Form->request->query['id'] = '11';
+        $this->Form->request = $this->Form->request->withData('id', 10)->withQueryParams(['id' => 11]);
 
         $this->Form->setValueSources(['context'])
             ->create($article, ['valueSources' => ['query', 'data']]);
@@ -8857,7 +8858,7 @@ class FormHelperTest extends TestCase
         $result = $this->Form->getSourceValue('id');
         $this->assertEquals('11', $result);
 
-        unset($this->Form->request->query['id']);
+        $this->Form->request = $this->Form->request->withQueryParams([]);
         $this->Form->setValueSources(['context'])
             ->create($article, ['valueSources' => ['query', 'data']]);
         $result = $this->Form->control('id');
@@ -8902,7 +8903,7 @@ class FormHelperTest extends TestCase
      */
     public function testFormValueSourcesDefaults()
     {
-        $this->Form->request->query['password'] = 'open Sesame';
+        $this->Form->request = $this->Form->request->withQueryParams(['password' => 'open Sesame']);
         $this->Form->create();
 
         $result = $this->Form->password('password');
